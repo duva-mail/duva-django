@@ -1,0 +1,75 @@
+# Publication de `duva-django` sur PyPI.
+#
+# Déclencheur : l'étiquette Git `vX.Y.Z` (la version de pyproject.toml DOIT être celle de l'étiquette), ou « Run
+# workflow » à la main, qui ne publie JAMAIS sauf si on décoche `dry_run` sur une étiquette.
+#
+# Authentification : « trusted publishing » de PyPI (OIDC, aucun jeton stocké). À déclarer UNE fois sur pypi.org
+# (pour un projet qui n'existe pas encore : Account > Publishing > « Add a new pending publisher ») : projet
+# duva-django, propriétaire `duva-mail`, dépôt `duva-django`, workflow `release.yml`, environnement `publication`.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Construire et contrôler seulement (ne rien publier)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { python: "3.10", django: "5.2.*" }
+          - { python: "3.13", django: "6.1.*" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: La version de pyproject.toml est celle de l'étiquette
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml | head -n 1)
+          [ "v${version}" = "${GITHUB_REF_NAME}" ] || { echo "pyproject=${version}, étiquette=${GITHUB_REF_NAME}" >&2; exit 1; }
+      - name: Tests, types et style sur Django ${{ matrix.django }}
+        run: |
+          uv run --python ${{ matrix.python }} --extra dev --with "django==${{ matrix.django }}" pytest -q
+          uv run --python ${{ matrix.python }} --extra dev --with "django==${{ matrix.django }}" mypy
+          uv run --python ${{ matrix.python }} --extra dev ruff check .
+          uv run --python ${{ matrix.python }} --extra dev ruff format --check .
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv build
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || inputs.dry_run == false)
+    runs-on: ubuntu-latest
+    environment: publication
+    permissions:
+      id-token: write # trusted publishing
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2

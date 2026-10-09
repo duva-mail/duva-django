@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { python: "3.10", django: "5.2.*" }
+          - { python: "3.13", django: "6.1.*" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Tests, types et style sur Django ${{ matrix.django }}
+        run: |
+          uv run --python ${{ matrix.python }} --extra dev --with "django==${{ matrix.django }}" pytest -q
+          uv run --python ${{ matrix.python }} --extra dev --with "django==${{ matrix.django }}" mypy
+          uv run --python ${{ matrix.python }} --extra dev ruff check .
+          uv run --python ${{ matrix.python }} --extra dev ruff format --check .

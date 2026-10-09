@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "duva-django"
+version = "0.1.0"
+description = "Django email backend for Duva, the transactional email API hosted in Canada."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "9573-4562 Québec inc." }]
+keywords = ["duva", "django", "email", "email-backend", "transactional-email"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Django",
+  "Framework :: Django :: 5.2",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = ["django>=5.2", "duva-mail>=0.2,<1"]
+
+[project.urls]
+Homepage = "https://duva.ca"
+Documentation = "https://duva.ca/en/docs"
+Repository = "https://github.com/duva-mail/duva-django"
+Changelog = "https://github.com/duva-mail/duva-django/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "mypy>=1.13", "ruff>=0.7", "django-stubs>=5.1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/duva_django"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["duva_django"]
+mypy_path = "src"
+explicit_package_bases = true
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "tests.settings"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
